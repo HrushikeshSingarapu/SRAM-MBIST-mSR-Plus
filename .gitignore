@@ -1,0 +1,13 @@
+# Simulation outputs
+*.vcd
+*.wlf
+*.vvp
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Tool-generated files
+.sim/
+.cache/
