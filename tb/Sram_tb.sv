@@ -24,6 +24,7 @@ module sram_model_tb;
 
     logic [DATA_WIDTH-1:0] read_data;
 
+
     // ------------------------------------------------
     // DUT
     // ------------------------------------------------
@@ -31,14 +32,15 @@ module sram_model_tb;
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH)
     ) dut (
-        .clk       (clk),
-        .rst       (rst),
-        .mem_read  (mem_read),
-        .mem_write (mem_write),
-        .addr      (addr),
-        .write_data(write_data),
-        .read_data (read_data)
+        .clk        (clk),
+        .rst        (rst),
+        .mem_read   (mem_read),
+        .mem_write  (mem_write),
+        .addr       (addr),
+        .write_data (write_data),
+        .read_data  (read_data)
     );
+
 
     // ------------------------------------------------
     // Clock
@@ -46,12 +48,12 @@ module sram_model_tb;
     // ------------------------------------------------
     initial begin
         clk = 1'b0;
-
         forever #5 clk = ~clk;
     end
 
+
     // ------------------------------------------------
-    // Test
+    // Test sequence
     // ------------------------------------------------
     initial begin
 
@@ -62,9 +64,11 @@ module sram_model_tb;
         addr       = '0;
         write_data = '0;
 
-        // ------------------------------------------------
+
+        // =================================================
         // TEST 1: RESET
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 1: RESET");
@@ -74,12 +78,13 @@ module sram_model_tb;
 
         rst = 1'b0;
 
-        $display("PASS: Reset completed");
+        $display("PASS: Reset applied and released");
 
 
-        // ------------------------------------------------
+        // =================================================
         // TEST 2: WRITE DATA
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 2: WRITE DATA");
@@ -98,33 +103,35 @@ module sram_model_tb;
                  addr, write_data);
 
 
-        // ------------------------------------------------
+        // =================================================
         // TEST 3: READ DATA
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 3: READ DATA");
         $display("========================================");
 
-        addr      = 4'd0;
-        mem_read  = 1'b1;
+        addr     = 4'd0;
+        mem_read = 1'b1;
 
         #2;
 
-        $display("Address = %0d, Read data = %h",
-                 addr, read_data);
+        $display("Address = %0d, Expected = %h, Read = %h",
+                 addr, 8'hAA, read_data);
 
-        if (read_data == 8'hAA)
-            $display("PASS: Read data matches written data");
+        if (read_data !== 8'hAA)
+            $fatal(1, "TEST 3 FAILED: Read data mismatch");
         else
-            $display("FAIL: Read data does not match");
+            $display("PASS: Read data matches written data");
 
         mem_read = 1'b0;
 
 
-        // ------------------------------------------------
+        // =================================================
         // TEST 4: WRITE MULTIPLE ADDRESSES
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 4: WRITE MULTIPLE ADDRESSES");
@@ -141,16 +148,18 @@ module sram_model_tb;
 
             mem_write = 1'b0;
 
-            $display("Address = %0d, Data = %h",
+            $display("Address = %0d, Data written = %h",
                      addr, write_data);
+
         end
 
-        $display("PASS: Multiple address writes completed");
+        $display("PASS: All memory addresses written");
 
 
-        // ------------------------------------------------
+        // =================================================
         // TEST 5: READ MULTIPLE ADDRESSES
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 5: READ MULTIPLE ADDRESSES");
@@ -168,19 +177,22 @@ module sram_model_tb;
                      i + 8'h10,
                      read_data);
 
-            if (read_data == (i + 8'h10))
-                $display("PASS");
-            else
-                $display("FAIL");
+            if (read_data !== (i + 8'h10))
+                $fatal(1,
+                       "TEST 5 FAILED: Read mismatch at address %0d",
+                       i);
 
         end
+
+        $display("PASS: All memory addresses read correctly");
 
         mem_read = 1'b0;
 
 
-        // ------------------------------------------------
+        // =================================================
         // TEST 6: OVERWRITE EXISTING LOCATION
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 6: OVERWRITE DATA");
@@ -200,20 +212,21 @@ module sram_model_tb;
 
         #2;
 
-        $display("Address = %0d, New data = %h",
+        $display("Address = %0d, Expected = 55, Read = %h",
                  addr, read_data);
 
-        if (read_data == 8'h55)
-            $display("PASS: Memory overwrite successful");
+        if (read_data !== 8'h55)
+            $fatal(1, "TEST 6 FAILED: Memory overwrite failed");
         else
-            $display("FAIL: Memory overwrite failed");
+            $display("PASS: Memory overwrite successful");
 
         mem_read = 1'b0;
 
 
-        // ------------------------------------------------
+        // =================================================
         // TEST 7: READ DISABLED
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
         $display("TEST 7: READ DISABLED");
@@ -227,18 +240,19 @@ module sram_model_tb;
         $display("Read enable = %b, Read data = %h",
                  mem_read, read_data);
 
-        if (read_data == 8'h00)
-            $display("PASS: Read output disabled correctly");
+        if (read_data !== 8'h00)
+            $fatal(1, "TEST 7 FAILED: Read output is not zero");
         else
-            $display("FAIL: Read output not zero");
+            $display("PASS: Read output disabled correctly");
 
-        
-        // ------------------------------------------------
+
+        // =================================================
         // FINISH
-        // ------------------------------------------------
+        // =================================================
+
         $display("");
         $display("========================================");
-        $display("ALL SRAM TESTS COMPLETED");
+        $display("ALL SRAM TESTS PASSED");
         $display("========================================");
 
         #20;
