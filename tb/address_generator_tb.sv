@@ -7,6 +7,7 @@ module address_generator_tb;
     // ------------------------------------------------
     parameter ADDR_WIDTH = 4;
 
+
     // ------------------------------------------------
     // Testbench signals
     // ------------------------------------------------
@@ -21,6 +22,7 @@ module address_generator_tb;
 
     logic [ADDR_WIDTH-1:0] addr;
     logic last_addr;
+
 
     // ------------------------------------------------
     // DUT
@@ -39,18 +41,19 @@ module address_generator_tb;
         .last_addr            (last_addr)
     );
 
+
     // ------------------------------------------------
     // Clock generation
-    // 100 MHz clock
+    // 100 MHz
     // ------------------------------------------------
     initial begin
         clk = 1'b0;
-
         forever #5 clk = ~clk;
     end
 
+
     // ------------------------------------------------
-    // Test
+    // Test sequence
     // ------------------------------------------------
     initial begin
 
@@ -62,12 +65,15 @@ module address_generator_tb;
         cell_complete        = 1'b0;
         address_restart      = 1'b0;
 
-        // --------------------------------------------
-        // Reset
-        // --------------------------------------------
-        $display("----------------------------------------");
+
+        // =================================================
+        // TEST 1: RESET
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 1: RESET");
-        $display("----------------------------------------");
+        $display("========================================");
 
         #20;
 
@@ -77,18 +83,20 @@ module address_generator_tb;
 
         $display("Address after reset = %0d", addr);
 
-        if (addr == 0)
-            $display("PASS: Reset address is 0");
+        if (addr !== '0)
+            $fatal(1, "TEST 1 FAILED: Reset address is not 0");
         else
-            $display("FAIL: Reset address is not 0");
+            $display("PASS: Reset address is 0");
 
 
-        // --------------------------------------------
-        // TEST 2: Start ascending
-        // --------------------------------------------
-        $display("----------------------------------------");
+        // =================================================
+        // TEST 2: START ASCENDING
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 2: START ASCENDING");
-        $display("----------------------------------------");
+        $display("========================================");
 
         direction_up = 1'b1;
         start       = 1'b1;
@@ -100,20 +108,24 @@ module address_generator_tb;
 
         $display("Address = %0d", addr);
 
-        if (addr == 0)
-            $display("PASS: Ascending starts at address 0");
+        if (addr !== 0)
+            $fatal(1, "TEST 2 FAILED: Ascending did not start at 0");
         else
-            $display("FAIL: Ascending did not start at 0");
+            $display("PASS: Ascending starts at address 0");
 
 
-        // --------------------------------------------
-        // TEST 3: Ascending address generation
-        // --------------------------------------------
-        $display("----------------------------------------");
+        // =================================================
+        // TEST 3: ASCENDING ADDRESS GENERATION
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 3: ASCENDING ADDRESS GENERATION");
-        $display("----------------------------------------");
+        $display("========================================");
 
-        repeat (5) begin
+        for (int expected_addr = 1;
+             expected_addr <= 5;
+             expected_addr++) begin
 
             cell_complete = 1'b1;
 
@@ -122,18 +134,27 @@ module address_generator_tb;
 
             cell_complete = 1'b0;
 
-            $display("Address = %0d, last_addr = %b",
-                     addr, last_addr);
+            $display("Address = %0d, Expected = %0d, last_addr = %b",
+                     addr, expected_addr, last_addr);
+
+            if (addr !== expected_addr)
+                $fatal(1,
+                       "TEST 3 FAILED: Expected address %0d, got %0d",
+                       expected_addr, addr);
 
         end
 
+        $display("PASS: Ascending address generation");
 
-        // --------------------------------------------
-        // TEST 4: Ascending until last address
-        // --------------------------------------------
-        $display("----------------------------------------");
+
+        // =================================================
+        // TEST 4: ASCENDING TO LAST ADDRESS
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 4: ASCENDING TO LAST ADDRESS");
-        $display("----------------------------------------");
+        $display("========================================");
 
         while (addr != 15) begin
 
@@ -149,18 +170,20 @@ module address_generator_tb;
         $display("Address = %0d", addr);
         $display("last_addr = %b", last_addr);
 
-        if (last_addr == 1'b1)
-            $display("PASS: Last ascending address detected");
+        if (last_addr !== 1'b1)
+            $fatal(1, "TEST 4 FAILED: Last ascending address not detected");
         else
-            $display("FAIL: Last ascending address NOT detected");
+            $display("PASS: Last ascending address detected");
 
 
-        // --------------------------------------------
-        // TEST 5: Restart ascending
-        // --------------------------------------------
-        $display("----------------------------------------");
+        // =================================================
+        // TEST 5: RESTART ASCENDING
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 5: RESTART ASCENDING");
-        $display("----------------------------------------");
+        $display("========================================");
 
         restart_direction_up = 1'b1;
         address_restart      = 1'b1;
@@ -172,18 +195,20 @@ module address_generator_tb;
 
         $display("Address after restart = %0d", addr);
 
-        if (addr == 0)
-            $display("PASS: Ascending restart goes to 0");
+        if (addr !== 0)
+            $fatal(1, "TEST 5 FAILED: Ascending restart did not go to 0");
         else
-            $display("FAIL: Ascending restart incorrect");
+            $display("PASS: Ascending restart goes to 0");
 
 
-        // --------------------------------------------
-        // TEST 6: Start descending
-        // --------------------------------------------
-        $display("----------------------------------------");
+        // =================================================
+        // TEST 6: START DESCENDING
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 6: START DESCENDING");
-        $display("----------------------------------------");
+        $display("========================================");
 
         direction_up = 1'b0;
         start       = 1'b1;
@@ -195,20 +220,24 @@ module address_generator_tb;
 
         $display("Address = %0d", addr);
 
-        if (addr == 15)
-            $display("PASS: Descending starts at MAX_ADDR");
+        if (addr !== 15)
+            $fatal(1, "TEST 6 FAILED: Descending did not start at 15");
         else
-            $display("FAIL: Descending did not start at MAX_ADDR");
+            $display("PASS: Descending starts at MAX_ADDR");
 
 
-        // --------------------------------------------
-        // TEST 7: Descending address generation
-        // --------------------------------------------
-        $display("----------------------------------------");
+        // =================================================
+        // TEST 7: DESCENDING ADDRESS GENERATION
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 7: DESCENDING ADDRESS GENERATION");
-        $display("----------------------------------------");
+        $display("========================================");
 
-        repeat (5) begin
+        for (int expected_addr = 14;
+             expected_addr >= 10;
+             expected_addr--) begin
 
             cell_complete = 1'b1;
 
@@ -217,18 +246,27 @@ module address_generator_tb;
 
             cell_complete = 1'b0;
 
-            $display("Address = %0d, last_addr = %b",
-                     addr, last_addr);
+            $display("Address = %0d, Expected = %0d, last_addr = %b",
+                     addr, expected_addr, last_addr);
+
+            if (addr !== expected_addr)
+                $fatal(1,
+                       "TEST 7 FAILED: Expected address %0d, got %0d",
+                       expected_addr, addr);
 
         end
 
+        $display("PASS: Descending address generation");
 
-        // --------------------------------------------
-        // TEST 8: Descending until address 0
-        // --------------------------------------------
-        $display("----------------------------------------");
+
+        // =================================================
+        // TEST 8: DESCENDING TO ADDRESS 0
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 8: DESCENDING TO ADDRESS 0");
-        $display("----------------------------------------");
+        $display("========================================");
 
         while (addr != 0) begin
 
@@ -244,24 +282,27 @@ module address_generator_tb;
         $display("Address = %0d", addr);
         $display("last_addr = %b", last_addr);
 
-        if (last_addr == 1'b1)
-            $display("PASS: Last descending address detected");
+        if (last_addr !== 1'b1)
+            $fatal(1, "TEST 8 FAILED: Last descending address not detected");
         else
-            $display("FAIL: Last descending address NOT detected");
+            $display("PASS: Last descending address detected");
 
 
-        // --------------------------------------------
-        // TEST 9:
-        // S7 -> S8 transition
-        // --------------------------------------------
-        $display("----------------------------------------");
+        // =================================================
+        // TEST 9: S7 -> S8 RESTART
+        // =================================================
+
+        $display("");
+        $display("========================================");
         $display("TEST 9: S7 -> S8 RESTART");
-        $display("----------------------------------------");
+        $display("========================================");
 
-        // Current March element is ascending
+        // -----------------------------------------------
+        // Current March element: S7 ascending
+        // -----------------------------------------------
         direction_up = 1'b1;
 
-        // Put address at MAX_ADDR
+        // Start ascending traversal at address 0
         start = 1'b1;
 
         @(posedge clk);
@@ -269,31 +310,60 @@ module address_generator_tb;
 
         start = 1'b0;
 
-        // Next March element is descending
-        restart_direction_up = 1'b0;
+        // Move all the way to MAX_ADDR
+        while (addr != 15) begin
 
-        address_restart = 1'b1;
+            cell_complete = 1'b1;
+
+            @(posedge clk);
+            #1;
+
+            cell_complete = 1'b0;
+
+        end
+
+        // Verify S7 ended at address 15
+        $display("S7 final address = %0d", addr);
+
+        if (addr !== 15)
+            $fatal(1, "TEST 9 FAILED: S7 did not finish at address 15");
+
+        if (last_addr !== 1'b1)
+            $fatal(1, "TEST 9 FAILED: last_addr not asserted at address 15");
+
+        // -----------------------------------------------
+        // Next March element: S8 descending
+        // -----------------------------------------------
+        restart_direction_up = 1'b0;
+        address_restart      = 1'b1;
 
         @(posedge clk);
         #1;
 
         address_restart = 1'b0;
 
-        $display("Address after S7 -> S8 restart = %0d",
-                 addr);
+        $display("S8 starting address = %0d", addr);
 
-        if (addr == 15)
-            $display("PASS: S8 correctly starts at MAX_ADDR");
-        else
-            $display("FAIL: S8 did not start at MAX_ADDR");
+        // S8 descending must restart from MAX_ADDR
+        if (addr !== 15)
+            $fatal(1,
+                   "TEST 9 FAILED: S8 did not restart at MAX_ADDR");
+
+        if (last_addr !== 1'b0)
+            $fatal(1,
+                   "TEST 9 FAILED: S8 direction is not descending");
+
+        $display("PASS: S7 -> S8 correctly restarts at MAX_ADDR");
 
 
-        // --------------------------------------------
-        // Finish
-        // --------------------------------------------
-        $display("----------------------------------------");
-        $display("ALL ADDRESS GENERATOR TESTS COMPLETED");
-        $display("----------------------------------------");
+        // =================================================
+        // FINISH
+        // =================================================
+
+        $display("");
+        $display("========================================");
+        $display("ALL ADDRESS GENERATOR TESTS PASSED");
+        $display("========================================");
 
         #20;
 
