@@ -7,8 +7,11 @@
 // 3. March sequence S0 -> S12
 // 4. Operation index progression
 // 5. Address direction
-// 6. Step completion
-// 7. DONE
+// 6. Restart direction
+// 7. Cell completion
+// 8. Step completion
+// 9. Address restart
+// 10. DONE
 //
 // DUT:
 //     mbist_controller.sv
@@ -21,6 +24,7 @@ module tb_mbist_controller;
     //--------------------------------------------------------
     // Testbench signals
     //--------------------------------------------------------
+
     logic       clk;
     logic       rst;
     logic       start;
@@ -28,7 +32,10 @@ module tb_mbist_controller;
 
     logic       busy;
     logic       done;
+
     logic       direction_up;
+    logic       restart_direction_up;
+
     logic       cell_complete;
     logic       step_complete;
     logic       address_restart;
@@ -40,42 +47,51 @@ module tb_mbist_controller;
     //--------------------------------------------------------
     // DUT
     //--------------------------------------------------------
+
     mbist_controller dut (
-        .clk             (clk),
-        .rst             (rst),
-        .start           (start),
-        .last_addr       (last_addr),
+        .clk                   (clk),
+        .rst                   (rst),
+        .start                 (start),
+        .last_addr             (last_addr),
 
-        .busy            (busy),
-        .done            (done),
-        .direction_up    (direction_up),
-        .cell_complete   (cell_complete),
-        .step_complete   (step_complete),
-        .address_restart (address_restart),
+        .busy                  (busy),
+        .done                  (done),
 
-        .march_step      (march_step),
-        .operation_index (operation_index)
+        .direction_up          (direction_up),
+        .restart_direction_up  (restart_direction_up),
+
+        .cell_complete         (cell_complete),
+        .step_complete         (step_complete),
+        .address_restart       (address_restart),
+
+        .march_step            (march_step),
+        .operation_index       (operation_index)
     );
 
 
     //--------------------------------------------------------
     // Clock generation
     //--------------------------------------------------------
+
     initial begin
+
         clk = 1'b0;
 
         forever #5 clk = ~clk;
+
     end
 
 
     //--------------------------------------------------------
     // Test sequence
     //--------------------------------------------------------
+
     initial begin
 
         //----------------------------------------------------
         // Initial values
         //----------------------------------------------------
+
         rst       = 1'b1;
         start     = 1'b0;
         last_addr = 1'b0;
@@ -84,13 +100,16 @@ module tb_mbist_controller;
         //----------------------------------------------------
         // Apply reset
         //----------------------------------------------------
+
         #20;
 
         rst = 1'b0;
 
+
         //----------------------------------------------------
         // Start MBIST
         //----------------------------------------------------
+
         #10;
 
         start = 1'b1;
@@ -103,30 +122,33 @@ module tb_mbist_controller;
         //----------------------------------------------------
         // Simulate memory traversal
         //
-        // For this unit test we keep last_addr = 1.
+        // For this unit test, last_addr = 1.
         //
-        // This means each March element is completed at
-        // the current simulated address.
-        //
-        // The actual address_generator will later provide
-        // the real last_addr signal.
+        // This allows every March element to complete
+        // without requiring a real SRAM/address generator.
         //----------------------------------------------------
+
         last_addr = 1'b1;
 
 
         //----------------------------------------------------
         // Wait until MBIST completes
         //----------------------------------------------------
+
         wait (done == 1'b1);
+
 
         //----------------------------------------------------
         // Small delay for waveform visibility
         //----------------------------------------------------
+
         #10;
+
 
         //----------------------------------------------------
         // End simulation
         //----------------------------------------------------
+
         $display("==============================================");
         $display("MBIST CONTROLLER TEST COMPLETED");
         $display("==============================================");
@@ -139,21 +161,26 @@ module tb_mbist_controller;
     //--------------------------------------------------------
     // Monitor important controller signals
     //--------------------------------------------------------
- initial begin
-    $monitor(
-        "TIME=%0t | rst=%b | start=%b | busy=%b | step=%0d | op=%0d | dir=%b | cell_done=%b | step_done=%b | restart=%b | done=%b",
-        $time,
-        rst,
-        start,
-        busy,
-        march_step,
-        operation_index,
-        direction_up,
-        cell_complete,
-        step_complete,
-        address_restart,
-        done
-    );
-end
+
+    initial begin
+
+        $monitor(
+            "TIME=%0t | rst=%b | start=%b | busy=%b | step=%0d | op=%0d | dir=%b | restart_dir=%b | cell_done=%b | step_done=%b | restart=%b | done=%b",
+
+            $time,
+            rst,
+            start,
+            busy,
+            march_step,
+            operation_index,
+            direction_up,
+            restart_direction_up,
+            cell_complete,
+            step_complete,
+            address_restart,
+            done
+        );
+
+    end
 
 endmodule
