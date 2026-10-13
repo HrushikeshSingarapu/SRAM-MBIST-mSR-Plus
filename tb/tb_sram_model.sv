@@ -1,259 +1,63 @@
 `timescale 1ns/1ps
 
 module tb_sram_model;
-
-    localparam ADDR_WIDTH = 8;
-    localparam DATA_WIDTH = 32;
+    localparam int ADDR_WIDTH = 4;
+    localparam int DATA_WIDTH = 32;
 
     logic clk;
-    logic reset;
+    logic write_en;
+    logic [ADDR_WIDTH-1:0] write_addr;
+    logic [DATA_WIDTH-1:0] write_data;
+    logic [ADDR_WIDTH-1:0] read_addr;
+    logic [DATA_WIDTH-1:0] read_data;
+    logic fault_write_en;
+    logic [ADDR_WIDTH-1:0] fault_write_addr;
+    logic [DATA_WIDTH-1:0] fault_write_data;
+    logic [ADDR_WIDTH-1:0] victim_read_addr;
+    logic [DATA_WIDTH-1:0] victim_read_data;
 
-    logic mem_read;
-    logic mem_write;
-
-    logic [ADDR_WIDTH-1:0] sram_addr;
-    logic [DATA_WIDTH-1:0] sram_write_data;
-    logic [DATA_WIDTH-1:0] sram_read_data;
-
-
-    //============================================================
-    // DUT
-    //============================================================
-
-    sram_model #(
-        .ADDR_WIDTH(ADDR_WIDTH),
-        .DATA_WIDTH(DATA_WIDTH)
-    ) dut (
-        .clk             (clk),
-        .reset           (reset),
-        .mem_read        (mem_read),
-        .mem_write       (mem_write),
-        .sram_addr       (sram_addr),
-        .sram_write_data (sram_write_data),
-        .sram_read_data  (sram_read_data)
+    sram_model #(.ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH)) dut (
+        .clk(clk), .write_en(write_en), .write_addr(write_addr), .write_data(write_data),
+        .read_addr(read_addr), .read_data(read_data),
+        .fault_write_en(fault_write_en), .fault_write_addr(fault_write_addr),
+        .fault_write_data(fault_write_data), .victim_read_addr(victim_read_addr),
+        .victim_read_data(victim_read_data)
     );
 
+    always #5 clk = ~clk;
 
-    //============================================================
-    // Clock Generation
-    // 10 ns period
-    //============================================================
+    task automatic normal_write(input [ADDR_WIDTH-1:0] a, input [DATA_WIDTH-1:0] d);
+        begin
+            @(negedge clk); write_addr=a; write_data=d; write_en=1;
+            @(posedge clk); #1; write_en=0;
+        end
+    endtask
 
     initial begin
-        clk = 1'b0;
-        forever #5 clk = ~clk;
-    end
+        clk=0; write_en=0; write_addr=0; write_data=0; read_addr=0;
+        fault_write_en=0; fault_write_addr=0; fault_write_data=0; victim_read_addr=0;
 
+        normal_write(4'h0, 32'hAAAAAAAA);
+        read_addr=4'h0; #1;
+        if (read_data !== 32'hAAAAAAAA) $fatal(1, "Readback address 0 failed");
 
-    //============================================================
-    // SRAM Test
-    //============================================================
+        normal_write(4'h5, 32'h12345678);
+        read_addr=4'h5; #1;
+        if (read_data !== 32'h12345678) $fatal(1, "Readback address 5 failed");
 
-    initial begin
-
-        // -------------------------------------------------------
-        // Initial values
-        // -------------------------------------------------------
-
-        reset          = 1'b1;
-        mem_read       = 1'b0;
-        mem_write      = 1'b0;
-        sram_addr      = 8'h00;
-        sram_write_data = 32'h00000000;
-
-
-        // -------------------------------------------------------
-        // Reset
-        // -------------------------------------------------------
-
-        #10;
-
-        reset = 1'b0;
-
-
-        $display("========================================");
-        $display("          SRAM MODEL TEST");
-        $display("========================================");
-
-
-        //========================================================
-        // TEST 1: Write address 0
-        //========================================================
-
+        // Independent fault-induced write path.
         @(negedge clk);
-
-        sram_addr       = 8'h00;
-        sram_write_data = 32'hAAAAAAAA;
-        mem_write       = 1'b1;
-
-        // Write captured at rising edge
-        @(posedge clk);
-
-        #1;
-
-        mem_write = 1'b0;
-
-        $display("TEST 1: Address 0 written with AAAAAAAA");
-
-
-        //========================================================
-        // TEST 2: Read address 0
-        //========================================================
-
-        sram_addr = 8'h00;
-        mem_read  = 1'b1;
-
-        #1;
-
-        if (sram_read_data !== 32'hAAAAAAAA) begin
-
-            $error(
-                "SRAM read failed at address 0. Got %h",
-                sram_read_data
-            );
-
-            $fatal(1, "TEST 2 FAILED");
-
-        end
-
-        else begin
-
-            $display("TEST 2 PASSED: Read address 0");
-
-        end
-
-
-        //========================================================
-        // TEST 3: Write address 55
-        //========================================================
-
-        mem_read = 1'b0;
-
-        @(negedge clk);
-
-        sram_addr       = 8'h55;
-        sram_write_data = 32'h12345678;
-        mem_write       = 1'b1;
-
-        // Write captured at rising edge
-        @(posedge clk);
-
-        #1;
-
-        mem_write = 1'b0;
-
-        $display("TEST 3: Address 55 written with 12345678");
-
-
-        //========================================================
-        // TEST 4: Read address 55
-        //========================================================
-
-        sram_addr = 8'h55;
-        mem_read  = 1'b1;
-
-        #1;
-
-        if (sram_read_data !== 32'h12345678) begin
-
-            $error(
-                "SRAM read failed at address 55. Got %h",
-                sram_read_data
-            );
-
-            $fatal(1, "TEST 4 FAILED");
-
-        end
-
-        else begin
-
-            $display("TEST 4 PASSED: Read address 55");
-
-        end
-
-
-        //========================================================
-        // TEST 5: Check address 0 retained its data
-        //========================================================
-
-        sram_addr = 8'h00;
-
-        #1;
-
-        if (sram_read_data !== 32'hAAAAAAAA) begin
-
-            $error(
-                "Data at address 0 was corrupted. Got %h",
-                sram_read_data
-            );
-
-            $fatal(1, "TEST 5 FAILED");
-
-        end
-
-        else begin
-
-            $display("TEST 5 PASSED: Address 0 retained data");
-
-        end
-
-
-        //========================================================
-        // TEST 6: Overwrite address 0
-        //========================================================
-
-        mem_read = 1'b0;
-
-        @(negedge clk);
-
-        sram_addr       = 8'h00;
-        sram_write_data = 32'hFFFFFFFF;
-        mem_write       = 1'b1;
-
-        // Write captured at rising edge
-        @(posedge clk);
-
-        #1;
-
-        mem_write = 1'b0;
-
-
-        // Read overwritten data
-        sram_addr = 8'h00;
-        mem_read  = 1'b1;
-
-        #1;
-
-        if (sram_read_data !== 32'hFFFFFFFF) begin
-
-            $error(
-                "SRAM overwrite failed. Got %h",
-                sram_read_data
-            );
-
-            $fatal(1, "TEST 6 FAILED");
-
-        end
-
-        else begin
-
-            $display("TEST 6 PASSED: SRAM overwrite");
-
-        end
-
-//
-        //========================================================
-        // Final result
-        //========================================================
+        fault_write_addr=4'h0; fault_write_data=32'h55555555; fault_write_en=1;
+        @(posedge clk); #1; fault_write_en=0;
+        read_addr=4'h0; #1;
+        if (read_data !== 32'h55555555) $fatal(1, "Fault write path failed");
+
+        victim_read_addr=4'h5; #1;
+        if (victim_read_data !== 32'h12345678) $fatal(1, "Victim read failed");
 
         $display("----------------------------------------");
-        $display("      SRAM MODEL TEST PASSED");
+        $display("SRAM MODEL TEST PASSED");
         $display("----------------------------------------");
-
-        #10;
-
         $finish;
-
     end
-
 endmodule
