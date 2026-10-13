@@ -1,58 +1,62 @@
 //============================================================
 // BIST Controller
-//
-// March mSR+ controller based on the base paper:
-//
-// M.-Y. Lin, W.-K. Chiang, and C.-H. Wang,
-// "Enhancing Memory BIST With an Optimized RTL-BIST IP Core:
-// A Low-Power, High-Fault-Coverage Approach."
+// March mSR+ Controller
 //
 // March mSR+:
+//
 // S0  ↑ (w0)
 // S1  ↑ (w1)
-// S2  ↑ (r1,w0)
+// S2  ↑ (r1, w0)
 // S3  ↑ (r0)
 // S4  ↑ (r0)
-// S5  ↑ (r0,w1)
-// S6  ↑ (r1,w1)
-// S7  ↑ (r1,w0,w1)
-// S8  ↓ (r1,w0)
-// S9  ↓ (r0,w1)
+// S5  ↑ (r0, w1)
+// S6  ↑ (r1, w1)
+// S7  ↑ (r1, w0, w1)
+// S8  ↓ (r1, w0)
+// S9  ↓ (r0, w1)
 // S10 ↓ (r1)
 // S11 ↓ (r1)
-// S12 ↓ (r1,w0,r0)
+// S12 ↓ (r1, w0, r0)
 //
-// Complexity = 22N
+// Total = 22N memory operations
 //============================================================
 
 module bist_controller (
 
     input  logic clk,
-    input  logic reset,
+    input  logic rst,
     input  logic start,
 
     // Address generator status
     input  logic last_addr,
 
-    // Controller status
-    output logic test_done,
+    // BIST status
     output logic busy,
+    output logic done,
 
-    // March traversal
+    // Current address direction
+    // 1 = ascending
+    // 0 = descending
     output logic direction_up,
+
+    // Direction for next March element after restart
     output logic restart_direction_up,
 
-    // Address control
+    // Current-address operation completion
     output logic cell_complete,
+
+    // Current March element completion
     output logic step_complete,
+
+    // Restart address generator
     output logic address_restart,
 
     // Current March element
+    // 0 = S0 ... 12 = S12
     output logic [3:0] march_step,
 
-    // Current operation within March element
+    // Current operation inside March element
     output logic [1:0] operation_index
-
 );
 
     //--------------------------------------------------------
@@ -61,29 +65,28 @@ module bist_controller (
 
     typedef enum logic [3:0] {
 
-        IDLE = 4'd0,
+        S_IDLE = 4'd0,
 
-        S0   = 4'd1,
-        S1   = 4'd2,
-        S2   = 4'd3,
-        S3   = 4'd4,
-        S4   = 4'd5,
-        S5   = 4'd6,
-        S6   = 4'd7,
-        S7   = 4'd8,
-        S8   = 4'd9,
-        S9   = 4'd10,
-        S10  = 4'd11,
-        S11  = 4'd12,
-        S12  = 4'd13,
+        S0     = 4'd1,
+        S1     = 4'd2,
+        S2     = 4'd3,
+        S3     = 4'd4,
+        S4     = 4'd5,
+        S5     = 4'd6,
+        S6     = 4'd7,
+        S7     = 4'd8,
+        S8     = 4'd9,
+        S9     = 4'd10,
+        S10    = 4'd11,
+        S11    = 4'd12,
+        S12    = 4'd13,
 
-        DONE = 4'd14
+        S_DONE = 4'd14
 
     } state_t;
 
     state_t state;
     state_t next_state;
-
 
     //--------------------------------------------------------
     // Operation index
@@ -92,35 +95,34 @@ module bist_controller (
     logic [1:0] op_index;
     logic [1:0] max_op_index;
 
-
     //--------------------------------------------------------
-    // Number of operations in each March element
+    // Maximum operation index
     //--------------------------------------------------------
 
     always_comb begin
 
         case (state)
 
-            S0:  max_op_index = 2'd0;   // w0
-            S1:  max_op_index = 2'd0;   // w1
+            S0:  max_op_index = 2'd0;
+            S1:  max_op_index = 2'd0;
 
-            S2:  max_op_index = 2'd1;   // r1,w0
+            S2:  max_op_index = 2'd1;
 
-            S3:  max_op_index = 2'd0;   // r0
-            S4:  max_op_index = 2'd0;   // r0
+            S3:  max_op_index = 2'd0;
+            S4:  max_op_index = 2'd0;
 
-            S5:  max_op_index = 2'd1;   // r0,w1
-            S6:  max_op_index = 2'd1;   // r1,w1
+            S5:  max_op_index = 2'd1;
+            S6:  max_op_index = 2'd1;
 
-            S7:  max_op_index = 2'd2;   // r1,w0,w1
+            S7:  max_op_index = 2'd2;
 
-            S8:  max_op_index = 2'd1;   // r1,w0
-            S9:  max_op_index = 2'd1;   // r0,w1
+            S8:  max_op_index = 2'd1;
+            S9:  max_op_index = 2'd1;
 
-            S10: max_op_index = 2'd0;   // r1
-            S11: max_op_index = 2'd0;   // r1
+            S10: max_op_index = 2'd0;
+            S11: max_op_index = 2'd0;
 
-            S12: max_op_index = 2'd2;   // r1,w0,r0
+            S12: max_op_index = 2'd2;
 
             default:
                 max_op_index = 2'd0;
@@ -129,16 +131,15 @@ module bist_controller (
 
     end
 
-
     //--------------------------------------------------------
     // State and operation registers
     //--------------------------------------------------------
 
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk or posedge rst) begin
 
-        if (reset) begin
+        if (rst) begin
 
-            state    <= IDLE;
+            state    <= S_IDLE;
             op_index <= 2'd0;
 
         end
@@ -147,13 +148,7 @@ module bist_controller (
 
             state <= next_state;
 
-            if (state == IDLE) begin
-
-                op_index <= 2'd0;
-
-            end
-
-            else if (state == DONE) begin
+            if ((state == S_IDLE) || (state == S_DONE)) begin
 
                 op_index <= 2'd0;
 
@@ -175,9 +170,8 @@ module bist_controller (
 
     end
 
-
     //--------------------------------------------------------
-    // Next-state logic
+    // Next state logic
     //--------------------------------------------------------
 
     always_comb begin
@@ -186,7 +180,7 @@ module bist_controller (
 
         case (state)
 
-            IDLE: begin
+            S_IDLE: begin
 
                 if (start)
                     next_state = S0;
@@ -280,26 +274,25 @@ module bist_controller (
             S12: begin
 
                 if ((op_index == max_op_index) && last_addr)
-                    next_state = DONE;
+                    next_state = S_DONE;
 
             end
 
-            DONE: begin
+            S_DONE: begin
 
-                next_state = IDLE;
+                next_state = S_IDLE;
 
             end
 
             default: begin
 
-                next_state = IDLE;
+                next_state = S_IDLE;
 
             end
 
         endcase
 
     end
-
 
     //--------------------------------------------------------
     // Output logic
@@ -308,7 +301,7 @@ module bist_controller (
     always_comb begin
 
         busy                 = 1'b0;
-        test_done            = 1'b0;
+        done                 = 1'b0;
 
         direction_up         = 1'b1;
         restart_direction_up = 1'b1;
@@ -320,14 +313,16 @@ module bist_controller (
         march_step           = 4'd0;
         operation_index      = op_index;
 
-
         case (state)
+
+            //------------------------------------------------
+            // Active March states
+            //------------------------------------------------
 
             S0, S1, S2, S3, S4, S5, S6,
             S7, S8, S9, S10, S11, S12: begin
 
                 busy = 1'b1;
-
 
                 //------------------------------------------------
                 // March element number
@@ -354,9 +349,8 @@ module bist_controller (
 
                 endcase
 
-
                 //------------------------------------------------
-                // Current traversal direction
+                // Current direction
                 //------------------------------------------------
 
                 if (state <= S7)
@@ -364,16 +358,14 @@ module bist_controller (
                 else
                     direction_up = 1'b0;
 
-
                 //------------------------------------------------
-                // Direction of next March element
+                // Direction for next March element
                 //------------------------------------------------
 
                 if (state <= S6)
                     restart_direction_up = 1'b1;
                 else
                     restart_direction_up = 1'b0;
-
 
                 //------------------------------------------------
                 // Last operation at current address
@@ -382,9 +374,8 @@ module bist_controller (
                 if (op_index == max_op_index)
                     cell_complete = 1'b1;
 
-
                 //------------------------------------------------
-                // Last operation at final address
+                // Last operation at last address
                 //------------------------------------------------
 
                 if ((op_index == max_op_index) && last_addr) begin
@@ -396,19 +387,21 @@ module bist_controller (
 
             end
 
+            //------------------------------------------------
+            // DONE
+            //------------------------------------------------
 
-            DONE: begin
+            S_DONE: begin
 
-                busy      = 1'b0;
-                test_done = 1'b1;
+                busy = 1'b0;
+                done = 1'b1;
 
             end
 
-
             default: begin
 
-                busy      = 1'b0;
-                test_done = 1'b0;
+                busy = 1'b0;
+                done = 1'b0;
 
             end
 
