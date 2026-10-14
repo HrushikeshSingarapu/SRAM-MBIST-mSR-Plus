@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="mbist_top_wave.wdb" id="1">
+         <top_modules>
+            <top_module name="tb_mbist_top" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+   </zoom_setting>
+   <column_width_setting>
+   </column_width_setting>
+   <WVObjectSize size="66" />
+   <wvobject fp_name="/tb_mbist_top/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/rst" type="logic">
+      <obj_property name="ElementShortName">rst</obj_property>
+      <obj_property name="ObjectShortName">rst</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/start" type="logic">
+      <obj_property name="ElementShortName">start</obj_property>
+      <obj_property name="ObjectShortName">start</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/fault_enable" type="logic">
+      <obj_property name="ElementShortName">fault_enable</obj_property>
+      <obj_property name="ObjectShortName">fault_enable</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/fault_type" type="array">
+      <obj_property name="ElementShortName">fault_type[3:0]</obj_property>
+      <obj_property name="ObjectShortName">fault_type[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/fault_address" type="array">
+      <obj_property name="ElementShortName">fault_address[2:0]</obj_property>
+      <obj_property name="ObjectShortName">fault_address[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/aggressor_address" type="array">
+      <obj_property name="ElementShortName">aggressor_address[2:0]</obj_property>
+      <obj_property name="ObjectShortName">aggressor_address[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/stuck_at_value" type="logic">
+      <obj_property name="ElementShortName">stuck_at_value</obj_property>
+      <obj_property name="ObjectShortName">stuck_at_value</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/busy" type="logic">
+      <obj_property name="ElementShortName">busy</obj_property>
+      <obj_property name="ObjectShortName">busy</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/done" type="logic">
+      <obj_property name="ElementShortName">done</obj_property>
+      <obj_property name="ObjectShortName">done</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/pass" type="logic">
+      <obj_property name="ElementShortName">pass</obj_property>
+      <obj_property name="ObjectShortName">pass</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/fail" type="logic">
+      <obj_property name="ElementShortName">fail</obj_property>
+      <obj_property name="ObjectShortName">fail</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/current_address" type="array">
+      <obj_property name="ElementShortName">current_address[2:0]</obj_property>
+      <obj_property name="ObjectShortName">current_address[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/march_step" type="array">
+      <obj_property name="ElementShortName">march_step[3:0]</obj_property>
+      <obj_property name="ObjectShortName">march_step[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/operation_index" type="array">
+      <obj_property name="ElementShortName">operation_index[1:0]</obj_property>
+      <obj_property name="ObjectShortName">operation_index[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/direction_up" type="logic">
+      <obj_property name="ElementShortName">direction_up</obj_property>
+      <obj_property name="ObjectShortName">direction_up</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/ADDR_WIDTH" type="array">
+      <obj_property name="ElementShortName">ADDR_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ADDR_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/DATA_WIDTH" type="array">
+      <obj_property name="ElementShortName">DATA_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_SAF" type="array">
+      <obj_property name="ElementShortName">FAULT_SAF[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_SAF[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_TF" type="array">
+      <obj_property name="ElementShortName">FAULT_TF[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_TF[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_CFID" type="array">
+      <obj_property name="ElementShortName">FAULT_CFID[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_CFID[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_CFDRD" type="array">
+      <obj_property name="ElementShortName">FAULT_CFDRD[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_CFDRD[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_CFIN" type="array">
+      <obj_property name="ElementShortName">FAULT_CFIN[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_CFIN[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_RDF" type="array">
+      <obj_property name="ElementShortName">FAULT_RDF[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_RDF[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_DRDF" type="array">
+      <obj_property name="ElementShortName">FAULT_DRDF[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_DRDF[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_IRF" type="array">
+      <obj_property name="ElementShortName">FAULT_IRF[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_IRF[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_CFTR" type="array">
+      <obj_property name="ElementShortName">FAULT_CFTR[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_CFTR[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_CFWD" type="array">
+      <obj_property name="ElementShortName">FAULT_CFWD[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_CFWD[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/FAULT_WDF" type="array">
+      <obj_property name="ElementShortName">FAULT_WDF[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FAULT_WDF[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/rst" type="logic">
+      <obj_property name="ElementShortName">rst</obj_property>
+      <obj_property name="ObjectShortName">rst</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/start" type="logic">
+      <obj_property name="ElementShortName">start</obj_property>
+      <obj_property name="ObjectShortName">start</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_enable" type="logic">
+      <obj_property name="ElementShortName">fault_enable</obj_property>
+      <obj_property name="ObjectShortName">fault_enable</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_type" type="array">
+      <obj_property name="ElementShortName">fault_type[3:0]</obj_property>
+      <obj_property name="ObjectShortName">fault_type[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_address" type="array">
+      <obj_property name="ElementShortName">fault_address[2:0]</obj_property>
+      <obj_property name="ObjectShortName">fault_address[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/aggressor_address" type="array">
+      <obj_property name="ElementShortName">aggressor_address[2:0]</obj_property>
+      <obj_property name="ObjectShortName">aggressor_address[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/stuck_at_value" type="logic">
+      <obj_property name="ElementShortName">stuck_at_value</obj_property>
+      <obj_property name="ObjectShortName">stuck_at_value</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/busy" type="logic">
+      <obj_property name="ElementShortName">busy</obj_property>
+      <obj_property name="ObjectShortName">busy</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/done" type="logic">
+      <obj_property name="ElementShortName">done</obj_property>
+      <obj_property name="ObjectShortName">done</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/pass" type="logic">
+      <obj_property name="ElementShortName">pass</obj_property>
+      <obj_property name="ObjectShortName">pass</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fail" type="logic">
+      <obj_property name="ElementShortName">fail</obj_property>
+      <obj_property name="ObjectShortName">fail</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/current_address" type="array">
+      <obj_property name="ElementShortName">current_address[2:0]</obj_property>
+      <obj_property name="ObjectShortName">current_address[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/march_step" type="array">
+      <obj_property name="ElementShortName">march_step[3:0]</obj_property>
+      <obj_property name="ObjectShortName">march_step[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/operation_index" type="array">
+      <obj_property name="ElementShortName">operation_index[1:0]</obj_property>
+      <obj_property name="ObjectShortName">operation_index[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/direction_up" type="logic">
+      <obj_property name="ElementShortName">direction_up</obj_property>
+      <obj_property name="ObjectShortName">direction_up</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/restart_direction_up" type="logic">
+      <obj_property name="ElementShortName">restart_direction_up</obj_property>
+      <obj_property name="ObjectShortName">restart_direction_up</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/cell_complete" type="logic">
+      <obj_property name="ElementShortName">cell_complete</obj_property>
+      <obj_property name="ObjectShortName">cell_complete</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/step_complete" type="logic">
+      <obj_property name="ElementShortName">step_complete</obj_property>
+      <obj_property name="ObjectShortName">step_complete</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/address_restart" type="logic">
+      <obj_property name="ElementShortName">address_restart</obj_property>
+      <obj_property name="ObjectShortName">address_restart</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/last_addr" type="logic">
+      <obj_property name="ElementShortName">last_addr</obj_property>
+      <obj_property name="ObjectShortName">last_addr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/mem_read" type="logic">
+      <obj_property name="ElementShortName">mem_read</obj_property>
+      <obj_property name="ObjectShortName">mem_read</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/mem_write" type="logic">
+      <obj_property name="ElementShortName">mem_write</obj_property>
+      <obj_property name="ObjectShortName">mem_write</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/write_data" type="array">
+      <obj_property name="ElementShortName">write_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">write_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/expected_data" type="array">
+      <obj_property name="ElementShortName">expected_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">expected_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/normal_read_data" type="array">
+      <obj_property name="ElementShortName">normal_read_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">normal_read_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/victim_data" type="array">
+      <obj_property name="ElementShortName">victim_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">victim_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/faulty_read_data" type="array">
+      <obj_property name="ElementShortName">faulty_read_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">faulty_read_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/faulty_write_data" type="array">
+      <obj_property name="ElementShortName">faulty_write_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">faulty_write_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_write_en" type="logic">
+      <obj_property name="ElementShortName">fault_write_en</obj_property>
+      <obj_property name="ObjectShortName">fault_write_en</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_write_addr" type="array">
+      <obj_property name="ElementShortName">fault_write_addr[2:0]</obj_property>
+      <obj_property name="ObjectShortName">fault_write_addr[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_write_data" type="array">
+      <obj_property name="ElementShortName">fault_write_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">fault_write_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/mismatch" type="logic">
+      <obj_property name="ElementShortName">mismatch</obj_property>
+      <obj_property name="ObjectShortName">mismatch</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/fault_detected" type="logic">
+      <obj_property name="ElementShortName">fault_detected</obj_property>
+      <obj_property name="ObjectShortName">fault_detected</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/addr" type="array">
+      <obj_property name="ElementShortName">addr[2:0]</obj_property>
+      <obj_property name="ObjectShortName">addr[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/ADDR_WIDTH" type="array">
+      <obj_property name="ElementShortName">ADDR_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ADDR_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_mbist_top/dut/DATA_WIDTH" type="array">
+      <obj_property name="ElementShortName">DATA_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_WIDTH[31:0]</obj_property>
+   </wvobject>
+</wave_config>
