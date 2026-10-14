@@ -15,4 +15,5 @@ work/
 xsim.dir/
 *.jou
 *.pb
+*.wdb
 dfx_runtime.txt
