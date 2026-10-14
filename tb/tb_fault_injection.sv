@@ -74,6 +74,11 @@ module tb_fault_injection;
 
     logic [DATA_WIDTH-1:0] faulty_write_data;
 
+    logic [DATA_WIDTH-1:0] victim_data;
+    logic                  fault_write_en;
+    logic [ADDR_WIDTH-1:0] fault_write_addr;
+    logic [DATA_WIDTH-1:0] fault_write_data;
+
 
     //--------------------------------------------------------
     // Fault constants
@@ -112,6 +117,8 @@ module tb_fault_injection;
         .normal_read_data     (normal_read_data),
         .write_data           (write_data),
 
+        .victim_data          (victim_data),
+
         .fault_enable         (fault_enable),
         .fault_type           (fault_type),
 
@@ -121,7 +128,11 @@ module tb_fault_injection;
         .stuck_at_value       (stuck_at_value),
 
         .faulty_read_data     (faulty_read_data),
-        .faulty_write_data    (faulty_write_data)
+        .faulty_write_data    (faulty_write_data),
+
+        .fault_write_en       (fault_write_en),
+        .fault_write_addr     (fault_write_addr),
+        .fault_write_data     (fault_write_data)
 
     );
 
@@ -154,6 +165,7 @@ module tb_fault_injection;
 
             normal_read_data  = 32'hAAAAAAAA;
             write_data        = 32'hAAAAAAAA;
+            victim_data       = 32'hAAAAAAAA;
 
             fault_enable      = 1'b0;
 
@@ -258,17 +270,11 @@ module tb_fault_injection;
 
         fault_address = 8'h10;
 
-        // Establish previous value
-        addr       = 8'h10;
-        mem_write  = 1'b1;
-        write_data = 32'h00000000;
-
-        @(posedge clk);
-
-        mem_write = 1'b0;
-
-        // Attempt transition
-        write_data = 32'hFFFFFFFF;
+        // Establish existing cell value 0, and attempt to write 1
+        addr             = 8'h10;
+        normal_read_data = 32'h00000000;
+        write_data       = 32'hFFFFFFFF;
+        mem_write        = 1'b1;
 
         #10;
 
@@ -296,28 +302,20 @@ module tb_fault_injection;
 
         fault_address     = 8'h10;
         aggressor_address = 8'h11;
+        victim_data       = 32'hAAAAAAAA;
 
-        // Access aggressor
+        // Access aggressor; victim data inverted via fault_write port
         addr      = 8'h11;
         mem_write = 1'b1;
 
-        @(posedge clk);
-
-        mem_write = 1'b0;
-
-        // Read victim
-        addr             = 8'h10;
-        mem_read         = 1'b1;
-        normal_read_data = 32'hAAAAAAAA;
-
         #10;
 
-        if (faulty_read_data === 32'h55555555)
+        if (fault_write_en === 1'b1 && fault_write_addr === 8'h10 && fault_write_data === 32'h55555555)
             $display("CFid PASS");
 
         else
-            $display("CFid FAIL : DATA=%h",
-                     faulty_read_data);
+            $display("CFid FAIL : EN=%b ADDR=%h DATA=%h",
+                     fault_write_en, fault_write_addr, fault_write_data);
 
 
         //----------------------------------------------------
@@ -336,25 +334,20 @@ module tb_fault_injection;
 
         fault_address     = 8'h10;
         aggressor_address = 8'h11;
+        victim_data       = 32'hAAAAAAAA;
 
-        // Aggressor read
+        // Aggressor read; victim data inverted via fault_write port
         addr      = 8'h11;
         mem_read  = 1'b1;
 
-        @(posedge clk);
-
-        // Victim read
-        addr             = 8'h10;
-        normal_read_data = 32'hAAAAAAAA;
-
         #10;
 
-        if (faulty_read_data === 32'h55555555)
+        if (fault_write_en === 1'b1 && fault_write_addr === 8'h10 && fault_write_data === 32'h55555555)
             $display("CFdrd PASS");
 
         else
-            $display("CFdrd FAIL : DATA=%h",
-                     faulty_read_data);
+            $display("CFdrd FAIL : EN=%b ADDR=%h DATA=%h",
+                     fault_write_en, fault_write_addr, fault_write_data);
 
 
         //----------------------------------------------------
@@ -373,26 +366,20 @@ module tb_fault_injection;
 
         fault_address     = 8'h10;
         aggressor_address = 8'h11;
+        victim_data       = 32'hAAAAAAAA;
 
+        // Aggressor write; victim data inverted via fault_write port
         addr      = 8'h11;
         mem_write = 1'b1;
 
-        @(posedge clk);
-
-        mem_write = 1'b0;
-
-        addr             = 8'h10;
-        mem_read         = 1'b1;
-        normal_read_data = 32'hAAAAAAAA;
-
         #10;
 
-        if (faulty_read_data === 32'h55555555)
+        if (fault_write_en === 1'b1 && fault_write_addr === 8'h10 && fault_write_data === 32'h55555555)
             $display("CFin PASS");
 
         else
-            $display("CFin FAIL : DATA=%h",
-                     faulty_read_data);
+            $display("CFin FAIL : EN=%b ADDR=%h DATA=%h",
+                     fault_write_en, fault_write_addr, fault_write_data);
 
 
         //----------------------------------------------------
@@ -483,9 +470,17 @@ module tb_fault_injection;
 
         fault_address = 8'h10;
 
-        addr             = 8'h10;
-        normal_read_data = 32'hAAAAAAAA;
+        // Previous write to fault address
+        addr       = 8'h10;
+        mem_write  = 1'b1;
+        write_data = 32'h00000000;
+
+        @(posedge clk);
+
+        // Read fault address after write
+        mem_write        = 1'b0;
         mem_read         = 1'b1;
+        normal_read_data = 32'hAAAAAAAA;
 
         #10;
 
@@ -513,26 +508,22 @@ module tb_fault_injection;
 
         fault_address     = 8'h10;
         aggressor_address = 8'h11;
+        victim_data       = 32'hAAAAAAAA;
 
-        addr      = 8'h11;
-        mem_write = 1'b1;
-
-        @(posedge clk);
-
-        mem_write = 1'b0;
-
-        addr             = 8'h10;
-        mem_read         = 1'b1;
-        normal_read_data = 32'hAAAAAAAA;
+        // Aggressor transition 0 -> 1
+        addr             = 8'h11;
+        normal_read_data = 32'h00000000;
+        write_data       = 32'hFFFFFFFF;
+        mem_write        = 1'b1;
 
         #10;
 
-        if (faulty_read_data === 32'h55555555)
+        if (fault_write_en === 1'b1 && fault_write_addr === 8'h10 && fault_write_data === 32'h55555555)
             $display("CFtr PASS");
 
         else
-            $display("CFtr FAIL : DATA=%h",
-                     faulty_read_data);
+            $display("CFtr FAIL : EN=%b ADDR=%h DATA=%h",
+                     fault_write_en, fault_write_addr, fault_write_data);
 
 
         //----------------------------------------------------
@@ -552,25 +543,19 @@ module tb_fault_injection;
         fault_address     = 8'h10;
         aggressor_address = 8'h11;
 
-        addr      = 8'h11;
-        mem_write = 1'b1;
-
-        @(posedge clk);
-
-        mem_write = 1'b0;
-
-        addr             = 8'h10;
-        mem_read         = 1'b1;
-        normal_read_data = 32'hAAAAAAAA;
+        // Aggressor write 0 causes victim write 0
+        addr       = 8'h11;
+        write_data = 32'h00000000;
+        mem_write  = 1'b1;
 
         #10;
 
-        if (faulty_read_data === 32'h55555555)
+        if (fault_write_en === 1'b1 && fault_write_addr === 8'h10 && fault_write_data === 32'h00000000)
             $display("CFwd PASS");
 
         else
-            $display("CFwd FAIL : DATA=%h",
-                     faulty_read_data);
+            $display("CFwd FAIL : EN=%b ADDR=%h DATA=%h",
+                     fault_write_en, fault_write_addr, fault_write_data);
 
 
         //----------------------------------------------------
@@ -589,16 +574,9 @@ module tb_fault_injection;
 
         fault_address = 8'h10;
 
-        // Existing value
+        // Write to fault address gets inverted
         addr       = 8'h10;
         mem_write  = 1'b1;
-        write_data = 32'h00000000;
-
-        @(posedge clk);
-
-        mem_write = 1'b0;
-
-        // Attempt new write
         write_data = 32'hFFFFFFFF;
 
         #10;

@@ -11,3 +11,8 @@ __pycache__/
 # Tool-generated files
 .sim/
 .cache/
+work/
+xsim.dir/
+*.jou
+*.pb
+dfx_runtime.txt

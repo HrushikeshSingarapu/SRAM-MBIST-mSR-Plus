@@ -196,9 +196,10 @@ module tb_mbist_top;
             wait(done);
 
             //------------------------------------------------
-            // Allow registered PASS/FAIL to update
+            // Allow registered PASS/FAIL to update on posedge clk
             //------------------------------------------------
 
+            @(posedge clk);
             @(negedge clk);
 
         end
