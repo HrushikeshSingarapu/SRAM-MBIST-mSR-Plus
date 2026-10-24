@@ -362,7 +362,15 @@ module bist_controller (
                 // Direction for next March element
                 //------------------------------------------------
 
-                if (state <= S6)
+                // S0..S6  -> next element S1..S7 is ascending : restart at 0
+                // S7..S11 -> next element S8..S12 is descending: restart at MAX
+                // S12     -> test ends; the next run starts at S0 (ascending),
+                //            so the address generator must be left at 0.
+                //            (Previously S12 left the address at MAX, so a
+                //             second run without reset started S0 at MAX and
+                //             covered only one address.)
+
+                if ((state <= S6) || (state == S12))
                     restart_direction_up = 1'b1;
                 else
                     restart_direction_up = 1'b0;
@@ -409,4 +417,4 @@ module bist_controller (
 
     end
 
-endmodule
+endmodule

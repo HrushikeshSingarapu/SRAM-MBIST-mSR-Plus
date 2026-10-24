@@ -7,8 +7,14 @@
 // Compares actual SRAM read data against the expected
 // March-pattern data.
 //
-// SRAM data width shown in Fig. 3:
-//     32 bits
+// compare_error is asserted only while compare_enable is
+// high (a valid read operation).
+//
+// Unknown (X/Z) read data is treated as a MISMATCH in
+// simulation, so an uninitialised or undriven cell can never
+// be mistaken for a successful comparison. (The X check sits
+// inside synthesis translate_off/on, because X does not exist
+// in hardware; the synthesised logic is the plain != compare.)
 //============================================================
 
 module data_comparator #(
@@ -22,10 +28,6 @@ module data_comparator #(
     output logic                 compare_error
 );
 
-    //--------------------------------------------------------
-    // Data comparison
-    //--------------------------------------------------------
-
     always_comb begin
 
         if (compare_enable)
@@ -33,6 +35,11 @@ module data_comparator #(
 
         else
             compare_error = 1'b0;
+
+        // synthesis translate_off
+        if (compare_enable && ((^sram_data) === 1'bx))
+            compare_error = 1'b1;
+        // synthesis translate_on
 
     end
 

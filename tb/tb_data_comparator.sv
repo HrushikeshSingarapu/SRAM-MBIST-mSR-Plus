@@ -1,105 +1,71 @@
 `timescale 1ns/1ps
 
+//============================================================
+// Data comparator test (self-checking, fails the simulation
+// on any error). Includes X/Z read data, which must never be
+// treated as a successful comparison.
+//============================================================
+
 module tb_data_comparator;
 
-    localparam DATA_WIDTH = 32;
+    localparam int DATA_WIDTH = 32;
 
     logic [DATA_WIDTH-1:0] sram_data;
     logic [DATA_WIDTH-1:0] expected_data;
     logic compare_enable;
-
     logic compare_error;
 
-    data_comparator #(
-        .DATA_WIDTH(DATA_WIDTH)
-    ) dut (
-        .sram_data    (sram_data),
-        .expected_data(expected_data),
-        .compare_enable(compare_enable),
-        .compare_error(compare_error)
+    data_comparator #(.DATA_WIDTH(DATA_WIDTH)) dut (
+        .sram_data(sram_data), .expected_data(expected_data),
+        .compare_enable(compare_enable), .compare_error(compare_error)
     );
 
+    int errors = 0;
+
+    task automatic check(input string name, input logic exp);
+        begin
+            #1;
+            if (compare_error !== exp) begin
+                $display("ERROR: %s : compare_error=%b expected %b", name, compare_error, exp);
+                errors++;
+            end
+        end
+    endtask
+
     initial begin
+        compare_enable = 1;
 
-        $display("========================================");
-        $display("   DATA COMPARATOR TEST");
-        $display("========================================");
+        sram_data = 32'hAAAAAAAA; expected_data = 32'hAAAAAAAA; check("match AAAA", 1'b0);
+        sram_data = 32'hAAAAAAAA; expected_data = 32'h55555555; check("mismatch", 1'b1);
+        sram_data = 32'h00000000; expected_data = 32'h00000000; check("all-0 match", 1'b0);
+        sram_data = 32'hFFFFFFFF; expected_data = 32'hFFFFFFFF; check("all-1 match", 1'b0);
+        sram_data = 32'hFFFFFFFF; expected_data = 32'h00000000; check("all-1 vs all-0", 1'b1);
+        sram_data = 32'h00000000; expected_data = 32'hFFFFFFFF; check("all-0 vs all-1", 1'b1);
 
-        // -------------------------------------
-        // TEST 1: Matching data
-        // -------------------------------------
-        sram_data = 32'hAAAAAAAA;
-        expected_data = 32'hAAAAAAAA;
-        compare_enable = 1'b1;
+        // single-bit difference in every position
+        for (int b = 0; b < DATA_WIDTH; b++) begin
+            sram_data = 32'hFFFFFFFF ^ (32'h1 << b); expected_data = 32'hFFFFFFFF;
+            check("single-bit difference", 1'b1);
+        end
 
-        #1;
+        // disabled comparator never reports an error
+        compare_enable = 0;
+        sram_data = 32'h00000000; expected_data = 32'hFFFFFFFF; check("disabled", 1'b0);
+        sram_data = 'x;                                          check("disabled, X data", 1'b0);
 
-        if (compare_error !== 1'b0)
-            $error("Comparator incorrectly detected an error");
-
-        $display("TEST 1 PASSED: Matching data");
-
-        // -------------------------------------
-        // TEST 2: Mismatching data
-        // -------------------------------------
-        sram_data = 32'hAAAAAAAA;
-        expected_data = 32'h55555555;
-        compare_enable = 1'b1;
-
-        #1;
-
-        if (compare_error !== 1'b1)
-            $error("Comparator failed to detect mismatch");
-
-        $display("TEST 2 PASSED: Mismatch detected");
-
-        // -------------------------------------
-        // TEST 3: Compare disabled
-        // -------------------------------------
-        sram_data = 32'h00000000;
-        expected_data = 32'hFFFFFFFF;
-        compare_enable = 1'b0;
-
-        #1;
-
-        if (compare_error !== 1'b0)
-            $error("Comparator should be disabled");
-
-        $display("TEST 3 PASSED: Compare disabled");
-
-        // -------------------------------------
-        // TEST 4: All zeros match
-        // -------------------------------------
-        sram_data = 32'h00000000;
-        expected_data = 32'h00000000;
-        compare_enable = 1'b1;
-
-        #1;
-
-        if (compare_error !== 1'b0)
-            $error("Zero comparison failed");
-
-        $display("TEST 4 PASSED");
-
-        // -------------------------------------
-        // TEST 5: All ones mismatch
-        // -------------------------------------
-        sram_data = 32'hFFFFFFFF;
-        expected_data = 32'h00000000;
-        compare_enable = 1'b1;
-
-        #1;
-
-        if (compare_error !== 1'b1)
-            $error("All-ones mismatch not detected");
-
-        $display("TEST 5 PASSED");
+        // X / Z read data while enabled = mismatch (never a pass)
+        compare_enable = 1;
+        sram_data = 'x; expected_data = 32'h00000000; check("X data (exp 0)", 1'b1);
+        sram_data = 'x; expected_data = 32'hFFFFFFFF; check("X data (exp 1)", 1'b1);
+        sram_data = 'z; expected_data = 32'h00000000; check("Z data", 1'b1);
+        sram_data = 32'hFFFFFFFE; sram_data[5] = 1'bx; expected_data = 32'hFFFFFFFF;
+        check("one X bit", 1'b1);
 
         $display("----------------------------------------");
-        $display("DATA COMPARATOR TEST PASSED");
+        if (errors == 0) $display("DATA COMPARATOR TEST PASSED");
+        else             $display("DATA COMPARATOR TEST FAILED: %0d errors", errors);
         $display("----------------------------------------");
-
-        #10;
+        if (errors != 0) $fatal(1, "data comparator errors");
         $finish;
     end
 

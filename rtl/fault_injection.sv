@@ -1,30 +1,89 @@
 //============================================================
-// Fault Injection
+// Fault Injection  (verification-only behavioural fault model)
 //
-// Verification-oriented behavioral fault model.
+// One fault is injected at a time (fault_type). All models are
+// PERSISTENT-STATE or READ-PATH faults, expressed with the
+// standard static/dynamic functional-fault-model (FFM)
+// primitives used in the memory-test literature. Data words are
+// treated as a single logical cell: logic 0 = all-zero word,
+// logic 1 = all-one word (the only values March mSR+ uses).
 //
-// Fault types:
+// Fault IDs (fault_type):
+//   0  SAF    1  TF     2  CFID   3  CFDRD  4  CFIN   5  RDF
+//   6  DRDF   7  IRF    8  CFTR   9  CFWD  10  WDF
+//  11  CFDRD_P  (paper-literal reading of CFdrd, see below)
+//  12  CFWD_P   (paper-literal reading of CFwd,  see below)
 //
-// 0  SAF
-// 1  TF
-// 2  CFID
-// 3  CFDRD
-// 4  CFIN
-// 5  RDF
-// 6  DRDF
-// 7  IRF
-// 8  CFTR
-// 9  CFWD
-// 10 WDF
+// Fault parameters (inputs):
+//   fault_address     victim cell (V)
+//   aggressor_address aggressor cell (A) - coupling faults only,
+//                     must differ from V (otherwise no fault)
+//   stuck_at_value    "fv" : see per-model meaning below
+//   fault_variant     "fvar": see per-model meaning below
 //
-// This is a project-level behavioral model based on the
-// fault models described in the reference paper.
+// Model definitions (x = fv, a/t = fvar, ~ = logical inversion)
+//
+//  SAF   cell stuck at fv. Writes are ignored, reads return fv.
+//  TF    cell holding fv cannot make the transition fv -> ~fv.
+//        (fv=0: up-transition fault, fv=1: down-transition fault)
+//  WDF   write destructive: a NON-transition write x over x
+//        flips the cell to ~x.
+//  RDF   read destructive: reading a cell that holds x flips it
+//        to ~x AND returns ~x.
+//  DRDF  deceptive read destructive: reading a cell that holds x
+//        returns x (correct) but flips the cell to ~x.
+//  IRF   incorrect read: reading a cell that holds x returns ~x;
+//        the stored value is unchanged.
+//  CFIN  inversion coupling: a transition of A from t to ~t
+//        (fvar=0: up, fvar=1: down) inverts V.
+//  CFID  idempotent coupling: a transition of A from t to ~t
+//        forces V to fv.
+//  CFTR  transition coupling: while A holds a (fvar), V cannot
+//        make the transition fv -> ~fv.
+//  CFWD  write-disturb coupling: while A holds a (fvar), a
+//        non-transition write x (fv) to V flips V to ~x.
+//  CFDRD deceptive-read-destructive coupling: while A holds a
+//        (fvar), reading V that holds x (fv) returns x but flips
+//        V to ~x.
+//
+//  Paper-literal variants. Table I of the paper defines CFdrd as
+//  "Aggressor read -> disturbs victim" and CFwd as "Aggressor
+//  write -> unintended victim write", i.e. in terms of an
+//  operation on the AGGRESSOR, whereas the standard FFM models
+//  above sensitise on the victim. Both readings are provided and
+//  reported separately:
+//  CFDRD_P reading A while it holds a (fvar) flips V if V holds
+//        x (fv); the read of A itself returns the correct value.
+//  CFWD_P  writing the value fvar to A also (unintentionally)
+//        writes fvar into V. (fv unused)
+//  WDF_P   paper Table I: "word-line activation -> disturbs nearby
+//        word-lines". Any access (read or write) to A, i.e. an
+//        activation of A's word line, flips V from x (fv) to ~x.
+//        (fvar unused)
+//
+// NOTE ON NAMING: Table I of the reference paper expands some of
+// these abbreviations differently from the standard FFM
+// literature (e.g. it calls CFid "inversion dominant" and CFin
+// "idempotent"; IRF "inversion read fault"; WDF "word-line
+// disturb"). Table I gives only one-line definitions, so the
+// paper's exact fault models cannot be reproduced literally. The
+// definitions above are the standard ones for each abbreviation;
+// both an inversion-type and an idempotent-type coupling fault
+// are modelled, so the paper's label swap does not change the
+// set of behaviours covered.
+//
+// fault_activated (verification output) is high in a cycle where
+// the injected fault actually changes the memory behaviour
+// (a read result, a stored write value, or a victim cell). A
+// testbench uses it to separate ACTIVATION from DETECTION.
 //============================================================
 
 module fault_injection #(
     parameter int ADDR_WIDTH = 4,
     parameter int DATA_WIDTH = 8
 )(
+    // clk/rst kept for interface compatibility; the model is
+    // purely combinational (all state lives in the SRAM cells).
     input logic clk,
     input logic rst,
 
@@ -41,10 +100,11 @@ module fault_injection #(
     input logic [DATA_WIDTH-1:0] write_data,
 
     //--------------------------------------------------------
-    // Victim cell data
+    // Current content of victim and aggressor cells
     //--------------------------------------------------------
 
     input logic [DATA_WIDTH-1:0] victim_data,
+    input logic [DATA_WIDTH-1:0] aggressor_data,
 
     //--------------------------------------------------------
     // Fault configuration
@@ -57,6 +117,7 @@ module fault_injection #(
     input logic [ADDR_WIDTH-1:0] aggressor_address,
 
     input logic                  stuck_at_value,
+    input logic                  fault_variant,
 
     //--------------------------------------------------------
     // Faulty current operation
@@ -66,12 +127,18 @@ module fault_injection #(
     output logic [DATA_WIDTH-1:0] faulty_write_data,
 
     //--------------------------------------------------------
-    // Fault-induced victim write
+    // Fault-induced write to the victim cell
     //--------------------------------------------------------
 
     output logic                  fault_write_en,
     output logic [ADDR_WIDTH-1:0] fault_write_addr,
-    output logic [DATA_WIDTH-1:0] fault_write_data
+    output logic [DATA_WIDTH-1:0] fault_write_data,
+
+    //--------------------------------------------------------
+    // Verification output
+    //--------------------------------------------------------
+
+    output logic                  fault_activated
 );
 
     //--------------------------------------------------------
@@ -89,69 +156,62 @@ module fault_injection #(
     localparam logic [3:0] CFTR  = 4'd8;
     localparam logic [3:0] CFWD  = 4'd9;
     localparam logic [3:0] WDF   = 4'd10;
-
-    localparam logic [DATA_WIDTH-1:0] DATA_ZERO =
-        {DATA_WIDTH{1'b0}};
-
-    localparam logic [DATA_WIDTH-1:0] DATA_ONE =
-        {DATA_WIDTH{1'b1}};
+    localparam logic [3:0] CFDRD_P = 4'd11;
+    localparam logic [3:0] CFWD_P  = 4'd12;
+    localparam logic [3:0] WDF_P   = 4'd13;
 
     //--------------------------------------------------------
-    // History
+    // Helper values
     //--------------------------------------------------------
 
-    logic [DATA_WIDTH-1:0] previous_write_data;
-    logic                  previous_write_valid;
+    logic [DATA_WIDTH-1:0] fv_word;     // fv   as a data word
+    logic [DATA_WIDTH-1:0] fvar_word;   // fvar as a data word
 
-    logic [ADDR_WIDTH-1:0] previous_read_addr;
-    logic                  previous_read_valid;
+    logic is_victim;        // current access is to the victim
+    logic is_aggressor;     // current access is to the aggressor
+    logic pair_valid;       // aggressor and victim are distinct
 
-    //--------------------------------------------------------
-    // History registers
-    //--------------------------------------------------------
+    logic victim_holds_fv;          // victim == x
+    logic nontrans_write_fv;        // write x over x to the victim
+    logic blocked_transition;       // write ~fv over fv to the victim
+    logic aggressor_in_state;       // aggressor == fvar
+    logic aggressor_transition;     // write ~fvar over fvar to aggressor
 
-    always_ff @(posedge clk or posedge rst) begin
+    always_comb begin
 
-        if (rst) begin
+        fv_word   = {DATA_WIDTH{stuck_at_value}};
+        fvar_word = {DATA_WIDTH{fault_variant}};
 
-            previous_write_data  <= DATA_ZERO;
-            previous_write_valid <= 1'b0;
+        is_victim    = (addr == fault_address);
+        pair_valid   = (aggressor_address != fault_address);
+        is_aggressor = (addr == aggressor_address) && pair_valid;
 
-            previous_read_addr   <= '0;
-            previous_read_valid  <= 1'b0;
+        victim_holds_fv    = (victim_data == fv_word);
 
-        end
+        nontrans_write_fv  = mem_write && is_victim &&
+                             (victim_data == fv_word) &&
+                             (write_data  == fv_word);
 
-        else begin
+        blocked_transition = mem_write && is_victim &&
+                             (victim_data == fv_word) &&
+                             (write_data  == ~fv_word);
 
-            if (mem_write) begin
+        aggressor_in_state = pair_valid &&
+                             (aggressor_data == fvar_word);
 
-                previous_write_data  <= write_data;
-                previous_write_valid <= 1'b1;
-
-            end
-
-            if (mem_read) begin
-
-                previous_read_addr  <= addr;
-                previous_read_valid <= 1'b1;
-
-            end
-
-        end
+        aggressor_transition = mem_write && is_aggressor &&
+                               (aggressor_data == fvar_word) &&
+                               (write_data     == ~fvar_word);
 
     end
 
     //--------------------------------------------------------
-    // Fault behavior
+    // Fault behaviour
     //--------------------------------------------------------
 
     always_comb begin
 
-        //----------------------------------------------------
-        // Defaults
-        //----------------------------------------------------
-
+        // Fault-free defaults
         faulty_read_data  = normal_read_data;
         faulty_write_data = write_data;
 
@@ -159,221 +219,165 @@ module fault_injection #(
         fault_write_addr  = fault_address;
         fault_write_data  = victim_data;
 
-        //----------------------------------------------------
-        // Fault disabled
-        //----------------------------------------------------
-
-        if (!fault_enable) begin
-
-            faulty_read_data  = normal_read_data;
-            faulty_write_data = write_data;
-
-        end
-
-        //----------------------------------------------------
-        // Fault enabled
-        //----------------------------------------------------
-
-        else begin
+        if (fault_enable) begin
 
             case (fault_type)
 
-                //------------------------------------------------
-                // SAF
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // SAF : stuck at fv
+                //----------------------------------------------
                 SAF: begin
-
-                    if (addr == fault_address) begin
-
-                        faulty_read_data =
-                            {DATA_WIDTH{stuck_at_value}};
-
-                        faulty_write_data =
-                            {DATA_WIDTH{stuck_at_value}};
-
+                    if (is_victim) begin
+                        faulty_read_data  = fv_word;
+                        faulty_write_data = fv_word;
                     end
-
                 end
 
-                //------------------------------------------------
-                // TF
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // TF : cell holding fv cannot go to ~fv
+                //----------------------------------------------
                 TF: begin
-
-                    if (addr == fault_address) begin
-
-                        if (write_data != normal_read_data)
-                            faulty_write_data = normal_read_data;
-
-                    end
-
+                    if (blocked_transition)
+                        faulty_write_data = victim_data;
                 end
 
-                //------------------------------------------------
-                // CFID
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // CFID : aggressor transition forces victim = fv
+                //----------------------------------------------
                 CFID: begin
-
-                    if (mem_write &&
-                        (addr == aggressor_address)) begin
-
+                    if (aggressor_transition) begin
                         fault_write_en   = 1'b1;
-                        fault_write_addr = fault_address;
-                        fault_write_data = ~victim_data;
-
+                        fault_write_data = fv_word;
                     end
-
                 end
 
-                //------------------------------------------------
-                // CFDRD
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // CFDRD : aggressor in state a; reading victim
+                //         holding x returns x, flips victim
+                //----------------------------------------------
                 CFDRD: begin
-
-                    if (mem_read &&
-                        (addr == aggressor_address)) begin
-
+                    if (mem_read && is_victim &&
+                        aggressor_in_state && victim_holds_fv) begin
                         fault_write_en   = 1'b1;
-                        fault_write_addr = fault_address;
-                        fault_write_data = ~victim_data;
-
+                        fault_write_data = ~fv_word;
                     end
-
                 end
 
-                //------------------------------------------------
-                // CFIN
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // CFIN : aggressor transition inverts victim
+                //----------------------------------------------
                 CFIN: begin
-
-                    if (mem_write &&
-                        (addr == aggressor_address)) begin
-
+                    if (aggressor_transition) begin
                         fault_write_en   = 1'b1;
-                        fault_write_addr = fault_address;
                         fault_write_data = ~victim_data;
-
                     end
-
                 end
 
-                //------------------------------------------------
-                // RDF
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // RDF : read flips cell and returns flipped value
+                //----------------------------------------------
                 RDF: begin
-
-                    if (mem_read &&
-                        (addr == fault_address)) begin
-
-                        faulty_read_data = ~normal_read_data;
-
+                    if (mem_read && is_victim && victim_holds_fv) begin
+                        faulty_read_data = ~fv_word;
+                        fault_write_en   = 1'b1;
+                        fault_write_data = ~fv_word;
                     end
-
                 end
 
-                //------------------------------------------------
-                // DRDF
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // DRDF : read returns correct value, flips cell
+                //----------------------------------------------
                 DRDF: begin
-
-                    if (mem_read &&
-                        previous_read_valid &&
-                        (previous_read_addr == addr) &&
-                        (addr == fault_address)) begin
-
-                        faulty_read_data = ~normal_read_data;
-
+                    if (mem_read && is_victim && victim_holds_fv) begin
+                        fault_write_en   = 1'b1;
+                        fault_write_data = ~fv_word;
                     end
-
                 end
 
-                //------------------------------------------------
-                // IRF
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // IRF : read returns inverted value, cell intact
+                //----------------------------------------------
                 IRF: begin
-
-                    if (mem_read &&
-                        previous_write_valid &&
-                        (addr == fault_address)) begin
-
-                        faulty_read_data = ~normal_read_data;
-
-                    end
-
+                    if (mem_read && is_victim && victim_holds_fv)
+                        faulty_read_data = ~fv_word;
                 end
 
-                //------------------------------------------------
-                // CFTR
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // CFTR : aggressor in state a blocks victim fv->~fv
+                //----------------------------------------------
                 CFTR: begin
-
-                    if (mem_write &&
-                        (addr == aggressor_address) &&
-                        (write_data != normal_read_data)) begin
-
-                        fault_write_en   = 1'b1;
-                        fault_write_addr = fault_address;
-                        fault_write_data = ~victim_data;
-
-                    end
-
+                    if (blocked_transition && aggressor_in_state)
+                        faulty_write_data = victim_data;
                 end
 
-                //------------------------------------------------
-                // CFWD
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // CFWD : aggressor in state a; non-transition
+                //        write x to victim flips it
+                //----------------------------------------------
                 CFWD: begin
-
-                    if (mem_write &&
-                        (addr == aggressor_address)) begin
-
-                        fault_write_en   = 1'b1;
-                        fault_write_addr = fault_address;
-
-                        if (write_data == DATA_ZERO)
-                            fault_write_data = DATA_ZERO;
-                        else
-                            fault_write_data = DATA_ONE;
-
-                    end
-
+                    if (nontrans_write_fv && aggressor_in_state)
+                        faulty_write_data = ~fv_word;
                 end
 
-                //------------------------------------------------
-                // WDF
-                //------------------------------------------------
-
+                //----------------------------------------------
+                // WDF : non-transition write x over x flips cell
+                //----------------------------------------------
                 WDF: begin
+                    if (nontrans_write_fv)
+                        faulty_write_data = ~fv_word;
+                end
 
-                    if (mem_write &&
-                        (addr == fault_address)) begin
-
-                        faulty_write_data = ~write_data;
-
+                //----------------------------------------------
+                // CFDRD_P : read of aggressor (holding a) flips
+                //           victim holding x
+                //----------------------------------------------
+                CFDRD_P: begin
+                    if (mem_read && is_aggressor &&
+                        (aggressor_data == fvar_word) && victim_holds_fv) begin
+                        fault_write_en   = 1'b1;
+                        fault_write_data = ~fv_word;
                     end
+                end
 
+                //----------------------------------------------
+                // CFWD_P : writing a to the aggressor also writes
+                //          a into the victim
+                //----------------------------------------------
+                CFWD_P: begin
+                    if (mem_write && is_aggressor &&
+                        (write_data == fvar_word)) begin
+                        fault_write_en   = 1'b1;
+                        fault_write_data = fvar_word;
+                    end
+                end
+
+                WDF_P: begin
+                    if ((mem_read || mem_write) && is_aggressor && victim_holds_fv) begin
+                        fault_write_en   = 1'b1;
+                        fault_write_data = ~fv_word;
+                    end
                 end
 
                 default: begin
-
-                    faulty_read_data  = normal_read_data;
-                    faulty_write_data = write_data;
-
                 end
 
             endcase
 
         end
+
+    end
+
+    //--------------------------------------------------------
+    // Activation indicator (verification only)
+    //--------------------------------------------------------
+
+    always_comb begin
+
+        fault_activated =
+            (fault_enable &&
+             ( (mem_read  && (faulty_read_data  != normal_read_data)) ||
+               (mem_write && (faulty_write_data != write_data))       ||
+               (fault_write_en && (fault_write_data != victim_data)) ));
 
     end
 

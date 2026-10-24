@@ -1,260 +1,138 @@
 `timescale 1ns/1ps
 
+//============================================================
+// Pattern generator test
+// Checks every (March element, operation index) against the
+// independent paper reference (reference functions in this file) for two data
+// widths, plus inactive/invalid steps.
+//============================================================
+
 module tb_pattern_generator;
 
-    localparam DATA_WIDTH = 32;
+    //--------------------------------------------------------
+    // Independent March mSR+ reference (paper Table II/III),
+    // NOT derived from the RTL. Op codes: 0=r0 1=r1 2=w0 3=w1
+    //--------------------------------------------------------
+    function automatic int ref_nops(input int s);
+        case (s)
+            0, 1, 3, 4, 10, 11 : ref_nops = 1;
+            2, 5, 6, 8, 9      : ref_nops = 2;
+            7, 12              : ref_nops = 3;
+            default            : ref_nops = 0;
+        endcase
+    endfunction
+
+    function automatic int ref_opcode(input int s, input int i);
+        case (s)
+            0:  ref_opcode = 2;                                   // w0
+            1:  ref_opcode = 3;                                   // w1
+            2:  ref_opcode = (i == 0) ? 1 : 2;                    // r1,w0
+            3:  ref_opcode = 0;                                   // r0
+            4:  ref_opcode = 0;                                   // r0
+            5:  ref_opcode = (i == 0) ? 0 : 3;                    // r0,w1
+            6:  ref_opcode = (i == 0) ? 1 : 3;                    // r1,w1
+            7:  ref_opcode = (i == 0) ? 1 : ((i == 1) ? 2 : 3);   // r1,w0,w1
+            8:  ref_opcode = (i == 0) ? 1 : 2;                    // r1,w0
+            9:  ref_opcode = (i == 0) ? 0 : 3;                    // r0,w1
+            10: ref_opcode = 1;                                   // r1
+            11: ref_opcode = 1;                                   // r1
+            12: ref_opcode = (i == 0) ? 1 : ((i == 1) ? 2 : 0);   // r1,w0,r0
+            default: ref_opcode = -1;
+        endcase
+    endfunction
+
+    // S0..S7 ascending, S8..S12 descending
+    function automatic bit ref_up(input int s);
+        ref_up = (s <= 7);
+    endfunction
+
+    function automatic bit ref_is_read(input int code);
+        ref_is_read = (code == 0) || (code == 1);
+    endfunction
+
+    // data value of the operation: 0 for r0/w0, 1 for r1/w1
+    function automatic bit ref_value(input int code);
+        ref_value = (code == 1) || (code == 3);
+    endfunction
 
     logic [3:0] march_step;
     logic [1:0] operation_index;
 
-    logic mem_read;
-    logic mem_write;
-    logic [DATA_WIDTH-1:0] write_data;
-    logic [DATA_WIDTH-1:0] expected_data;
+    logic        r8,  w8;
+    logic [7:0]  wd8, ex8;
+    logic        r32, w32;
+    logic [31:0] wd32, ex32;
 
-    pattern_generator #(
-        .DATA_WIDTH(DATA_WIDTH)
-    ) dut (
-        .march_step    (march_step),
-        .operation_index(operation_index),
-        .mem_read      (mem_read),
-        .mem_write     (mem_write),
-        .write_data    (write_data),
-        .expected_data (expected_data)
-    );
+    pattern_generator #(.DATA_WIDTH(8))  dut8  (
+        .march_step(march_step), .operation_index(operation_index),
+        .mem_read(r8), .mem_write(w8), .write_data(wd8), .expected_data(ex8));
 
-    task automatic check_operation;
+    pattern_generator #(.DATA_WIDTH(32)) dut32 (
+        .march_step(march_step), .operation_index(operation_index),
+        .mem_read(r32), .mem_write(w32), .write_data(wd32), .expected_data(ex32));
 
-        input [3:0] step;
-        input [1:0] op;
-        input        exp_read;
-        input        exp_write;
-        input [31:0] exp_write_data;
-        input [31:0] exp_expected;
-
-        begin
-
-            march_step = step;
-            operation_index = op;
-
-            #1;
-
-            if (mem_read !== exp_read)
-                $error("S%0d OP%0d: Incorrect READ control",
-                       step, op);
-
-            if (mem_write !== exp_write)
-                $error("S%0d OP%0d: Incorrect WRITE control",
-                       step, op);
-
-if (exp_write) begin
-    if (write_data !== exp_write_data)
-        $error(
-            "S%0d OP%0d: Incorrect write data",
-            step, op
-        );
-end
-
-if (exp_read) begin
-    if (expected_data !== exp_expected)
-        $error(
-            "S%0d OP%0d: Incorrect expected data",
-            step, op
-        );
-end
-
-            $display(
-                "S%0d OP%0d : R=%b W=%b WD=%h EXP=%h",
-                step,
-                op,
-                mem_read,
-                mem_write,
-                write_data,
-                expected_data
-            );
-        end
-    endtask
-
+    int errors = 0;
+    int total_ops = 0;
+    int s, i, code;
+    logic exp_r, exp_w, val;
 
     initial begin
 
-        $display("========================================");
-        $display("   PATTERN GENERATOR TEST");
-        $display("========================================");
+        for (s = 0; s <= 12; s++) begin
+            for (i = 0; i < ref_nops(s); i++) begin
 
-        // S0: ↑(w0)
-        check_operation(
-            4'd0, 2'd0,
-            1'b0, 1'b1,
-            32'h00000000,
-            32'h00000000
-        );
+                march_step = s; operation_index = i; #1;
 
-        // S1: ↑(w1)
-        check_operation(
-            4'd1, 2'd0,
-            1'b0, 1'b1,
-            32'hFFFFFFFF,
-            32'hFFFFFFFF
-        );
+                code  = ref_opcode(s, i);
+                exp_r = ref_is_read(code);
+                exp_w = !exp_r;
+                val   = ref_value(code);
+                total_ops++;
 
-        // S2: ↑(r1,w0)
-        check_operation(
-            4'd2, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
+                if (r8 !== exp_r || w8 !== exp_w || r32 !== exp_r || w32 !== exp_w) begin
+                    $display("ERROR S%0d OP%0d: strobes r8=%b w8=%b r32=%b w32=%b (exp r=%b w=%b)",
+                             s, i, r8, w8, r32, w32, exp_r, exp_w);
+                    errors++;
+                end
 
-        check_operation(
-            4'd2, 2'd1,
-            1'b0, 1'b1,
-            32'h00000000,
-            32'h00000000
-        );
+                if (exp_r) begin
+                    if (ex8 !== {8{val}} || ex32 !== {32{val}}) begin
+                        $display("ERROR S%0d OP%0d: expected_data %h / %h, want all-%0d",
+                                 s, i, ex8, ex32, val);
+                        errors++;
+                    end
+                end
+                else begin
+                    if (wd8 !== {8{val}} || wd32 !== {32{val}}) begin
+                        $display("ERROR S%0d OP%0d: write_data %h / %h, want all-%0d",
+                                 s, i, wd8, wd32, val);
+                        errors++;
+                    end
+                end
+            end
+        end
 
-        // S3: ↑(r0)
-        check_operation(
-            4'd3, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'h00000000
-        );
+        if (total_ops != 22) begin
+            $display("ERROR: reference has %0d ops per cell, expected 22", total_ops);
+            errors++;
+        end
 
-        // S4: ↑(r0)
-        check_operation(
-            4'd4, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'h00000000
-        );
-
-        // S5: ↑(r0,w1)
-        check_operation(
-            4'd5, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'h00000000
-        );
-
-        check_operation(
-            4'd5, 2'd1,
-            1'b0, 1'b1,
-            32'hFFFFFFFF,
-            32'hFFFFFFFF
-        );
-
-        // S6: ↑(r1,w1)
-        check_operation(
-            4'd6, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
-
-        check_operation(
-            4'd6, 2'd1,
-            1'b0, 1'b1,
-            32'hFFFFFFFF,
-            32'hFFFFFFFF
-        );
-
-        // S7: ↑(r1,w0,w1)
-        check_operation(
-            4'd7, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
-
-        check_operation(
-            4'd7, 2'd1,
-            1'b0, 1'b1,
-            32'h00000000,
-            32'h00000000
-        );
-
-        check_operation(
-            4'd7, 2'd2,
-            1'b0, 1'b1,
-            32'hFFFFFFFF,
-            32'hFFFFFFFF
-        );
-
-        // S8: ↓(r1,w0)
-        check_operation(
-            4'd8, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
-
-        check_operation(
-            4'd8, 2'd1,
-            1'b0, 1'b1,
-            32'h00000000,
-            32'h00000000
-        );
-
-        // S9: ↓(r0,w1)
-        check_operation(
-            4'd9, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'h00000000
-        );
-
-        check_operation(
-            4'd9, 2'd1,
-            1'b0, 1'b1,
-            32'hFFFFFFFF,
-            32'hFFFFFFFF
-        );
-
-        // S10: ↓(r1)
-        check_operation(
-            4'd10, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
-
-        // S11: ↓(r1)
-        check_operation(
-            4'd11, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
-
-        // S12: ↓(r1,w0,r0)
-        check_operation(
-            4'd12, 2'd0,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'hFFFFFFFF
-        );
-
-        check_operation(
-            4'd12, 2'd1,
-            1'b0, 1'b1,
-            32'h00000000,
-            32'h00000000
-        );
-
-        check_operation(
-            4'd12, 2'd2,
-            1'b1, 1'b0,
-            32'h00000000,
-            32'h00000000
-        );
+        // Invalid steps 13..15 must not access the memory.
+        for (s = 13; s <= 15; s++) begin
+            for (i = 0; i < 4; i++) begin
+                march_step = s; operation_index = i; #1;
+                if (r8 !== 1'b0 || w8 !== 1'b0 || r32 !== 1'b0 || w32 !== 1'b0) begin
+                    $display("ERROR: invalid step %0d OP%0d accesses memory", s, i);
+                    errors++;
+                end
+            end
+        end
 
         $display("----------------------------------------");
-        $display("All 22 mSR+ operations verified");
+        if (errors == 0) $display("PATTERN GENERATOR TEST PASSED (%0d operations checked)", total_ops);
+        else             $display("PATTERN GENERATOR TEST FAILED: %0d errors", errors);
         $display("----------------------------------------");
-
-        #10;
-        $display("PATTERN GENERATOR TEST PASSED");
+        if (errors != 0) $fatal(1, "pattern generator errors");
         $finish;
     end
 

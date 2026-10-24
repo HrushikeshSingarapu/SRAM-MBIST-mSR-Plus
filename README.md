@@ -140,11 +140,39 @@ Vasavi College of Engineering
 
 ## Project Status
 
-🚧 **In Development**
+**RTL and simulation-based verification: in place and regression-clean (simulation only; see the report for coverage limits).**
+Not yet done: Basys 3 wrapper/constraints, synthesis, implementation, hardware validation.
 
-The repository will be updated as the RTL design, SRAM model,
-fault-injection environment, verification infrastructure, and FPGA
-implementation are developed.
+### Verification at a glance
+
+* The March mSR+ sequence (S0-S12, 22 operations per cell) is checked against an independent
+  transcription of the paper's Tables II/III (`tb/tb_mbist_top.sv`, `tb/tb_bist_controller.sv`,
+  `tb/tb_pattern_generator.sv`).
+* Every fault test separates *activation* (`fault_activated`) from *detection* (`fail`).
+* `tb/tb_fault_coverage.sv` runs every fault model, variant, victim and aggressor/victim pair and
+  cross-checks the RTL against an independent behavioural March engine.
+* 22 injected RTL bugs are all caught by the testbenches (`sim/run_mutation_check.py`).
+* Fault-coverage results, how they compare with the paper, and the claim audit are in
+  `docs/VERIFICATION_REPORT.md`; the file-by-file change list is `docs/CHANGES.md`.
+
+### Run
+
+```text
+sim/run_regression.sh            # unit + top-level tests (Icarus Verilog, ~2 s)
+sim/run_regression.sh --full     # + exhaustive fault coverage (~1 min)
+python3 sim/run_mutation_check.py
+run_all_tb.bat                  # all 12 testbenches with Vivado xsim (Windows); prints one PASS/FAIL line each
+```
+
+### Interface semantics (`mbist_top`)
+
+`start` pulse while idle -> `busy` high -> `done` rises **together with** `pass`/`fail` and stays
+high until the next start. A `start` while busy is ignored. `fault_*` inputs and
+`fault_variant` configure the verification-only fault injector (`fault_enable = 0` for a
+fault-free memory).
+
+> The paper's power/area/timing/coverage figures belong to the paper's own MAX 10 implementation.
+> They are not results of this project.
 
 ## Reference
 
